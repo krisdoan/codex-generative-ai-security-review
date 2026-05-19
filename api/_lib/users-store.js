@@ -3,25 +3,13 @@ import { getFirestore, getFieldValue } from "./firestore.js";
 
 const usersCollection = "od_users_v2";
 
-const SUPER_ADMIN_EMAIL = "kris-doan@owndays.co.jp";
+const SUPER_ADMIN_EMAIL = "krisdoan.fr@gmail.com";
 
 const DEFAULT_ADMINS = [
   {
-    email: "kris-doan@owndays.co.jp",
-    name: "Kris Doan",
-    password: "owndays3070",
-    role: "admin",
-  },
-  {
-    email: "s-abe@owndays.co.jp",
-    name: "S. Abe",
-    password: "owndays3070",
-    role: "admin",
-  },
-  {
-    email: "ipyl@owndays.co.jp",
-    name: "ipyl",
-    password: "owndays3070",
+    email: "krisdoan.fr@gmail.com",
+    name: "Security Review Dummy",
+    password: "123456",
     role: "admin",
   },
 ];

@@ -48,6 +48,14 @@ PORT=4174 HOST=127.0.0.1 npm run start
 
 Open `http://127.0.0.1:4174`.
 
+## Review Login
+
+For this repository snapshot, real production users are not seeded.
+
+- Email: `krisdoan.fr@gmail.com`
+- Password: `123456`
+- Role: `admin`
+
 ## Security Notes
 
 - Do not commit real `.env*` files or service-account JSON files.

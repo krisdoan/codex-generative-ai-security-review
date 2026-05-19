@@ -15,6 +15,7 @@ cookies.txt
 node_modules/
 dist/
 dist-ssr
+migrated_prompt_history/
 
 # Environment and deployment secrets
 .env
