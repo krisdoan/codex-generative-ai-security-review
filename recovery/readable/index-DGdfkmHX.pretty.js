@@ -15825,7 +15825,29 @@ function jN() {
   }, Zn = (S) => new Promise((x, N) => {
     const R = new FileReader();
     R.onloadend = () => x(R.result), R.onerror = N, R.readAsDataURL(S);
-  }), compressModelImageForRequest = async (S, x = 2000, N = 0.86) => {
+  }), resizeGlassesFileForGeneration = async (S, x = 350, N = 232) => {
+    try {
+      const R = await Zn(S), O = new Image();
+      O.decoding = "async";
+      const W = new Promise((ee, he) => {
+        O.onload = () => ee(), O.onerror = he;
+      });
+      O.src = R, await W;
+      const se = document.createElement("canvas");
+      se.width = x, se.height = N;
+      const de = se.getContext("2d");
+      if (!de) return S;
+      de.clearRect(0, 0, x, N);
+      const Se = Math.min(x / (O.naturalWidth || O.width), N / (O.naturalHeight || O.height)), he = Math.max(1, Math.round((O.naturalWidth || O.width) * Se)), xt = Math.max(1, Math.round((O.naturalHeight || O.height) * Se)), Ge = Math.round((x - he) / 2), tl = Math.round((N - xt) / 2);
+      de.drawImage(O, Ge, tl, he, xt);
+      const Ce = await new Promise((tt, Ct) => {
+        se.toBlob((Tt) => Tt ? tt(Tt) : Ct(new Error("Failed to resize eyeglasses image.")), "image/png");
+      }), nt = String(S.name || "glasses").replace(/\.[a-zA-Z0-9]+$/, "");
+      return new File([Ce], `${nt}.png`, { type: "image/png", lastModified: Date.now() });
+    } catch {
+      return S;
+    }
+  }, compressModelImageForRequest = async (S, x = 2000, N = 0.86) => {
     const R = typeof S === "string" ? S : await Zn(S);
     if (!String(R).startsWith("data:image/")) return R;
     try {
@@ -15978,13 +16000,13 @@ Continue anyway?`)) return;
       Pe("/api/auth", { method: "POST", body: JSON.stringify({ action: "logout" }) }).catch(() => {
       }), Mt({ isLoading: false, results: [], error: null }), Mo([]), It(0), Me(false);
     }
-  }, bl = (S, x) => {
+  }, bl = async (S, x) => {
     if (x.target.files) {
       const N = Array.from(x.target.files);
       if (N.length === 0) return;
       if (S === "glasses") {
-        const R = N.map((O) => URL.createObjectURL(O));
-        ua((O) => [...O, ...N]), Wo((O) => [...O, ...R]);
+        const R = await Promise.all(N.map((O) => resizeGlassesFileForGeneration(O))), O = R.map((W) => URL.createObjectURL(W));
+        ua((W) => [...W, ...R]), Wo((W) => [...W, ...O]);
       } else {
         const R = N[0], O = URL.createObjectURL(R);
         switch (S) {
