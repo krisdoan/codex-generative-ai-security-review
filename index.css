@@ -1,0 +1,963 @@
+:root {
+  --obsidian: #080b0b;
+  --charcoal: #101211;
+  --ink: #171917;
+  --lichen: #6e705c;
+  --stone: #a8a39b;
+  --parchment: #d6cfc4;
+  --ivory: #f5f3ef;
+  --gold: #c9a15a;
+  --gold-soft: #e4c887;
+  --line: rgba(245, 243, 239, 0.22);
+  --line-dark: rgba(8, 11, 11, 0.12);
+  --shadow: 0 28px 80px rgba(0, 0, 0, 0.38);
+  font-family: "Montserrat", "Avenir Next", sans-serif;
+  color: var(--ivory);
+  background: var(--obsidian);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 16% 0%, rgba(201, 161, 90, 0.13), transparent 32rem),
+    linear-gradient(135deg, #050606 0%, #111310 48%, #060707 100%);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.site-shell {
+  overflow: hidden;
+  position: relative;
+  min-height: 100vh;
+}
+
+.site-shell::before {
+  position: fixed;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  opacity: 0.28;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: linear-gradient(to bottom, #000, transparent 72%);
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 1.1rem clamp(1rem, 3vw, 3rem);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(18px);
+  background: rgba(8, 11, 11, 0.74);
+}
+
+.topbar__brand,
+.admin-logo {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.topbar nav {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.8rem, 2vw, 2rem);
+  color: var(--parchment);
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.topbar a {
+  text-decoration: none;
+}
+
+.topbar button:not(.topbar__brand) {
+  border: 1px solid var(--line);
+  padding: 0.7rem 1rem;
+  color: var(--gold-soft);
+  background: rgba(255, 255, 255, 0.04);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.brand-mark svg {
+  width: 8.6rem;
+  max-width: 100%;
+  fill: none;
+}
+
+.brand-mark--compact svg {
+  width: 4.3rem;
+}
+
+.mark-sun,
+.mark-mountains,
+.mark-ridge {
+  stroke: var(--gold);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.wordmark {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.wordmark span {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(2.2rem, 5vw, 5.4rem);
+  font-weight: 400;
+  letter-spacing: 0.48em;
+  line-height: 0.9;
+  margin-right: -0.48em;
+}
+
+.wordmark em {
+  color: var(--parchment);
+  font-size: clamp(0.58rem, 1.1vw, 0.9rem);
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0.46em;
+  margin-right: -0.46em;
+  text-transform: uppercase;
+}
+
+.wordmark--small {
+  align-items: flex-start;
+  gap: 0.12rem;
+}
+
+.wordmark--small .brand-mark {
+  display: none;
+}
+
+.wordmark--small span {
+  font-size: 1.2rem;
+  letter-spacing: 0.34em;
+  margin-right: -0.34em;
+}
+
+.wordmark--small em {
+  font-size: 0.5rem;
+  letter-spacing: 0.3em;
+  margin-right: -0.3em;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(20rem, 1.1fr);
+  gap: clamp(2rem, 5vw, 5rem);
+  align-items: center;
+  min-height: calc(100vh - 74px);
+  padding: clamp(3rem, 7vw, 7rem) clamp(1.2rem, 5vw, 5rem);
+}
+
+.hero__copy {
+  position: relative;
+  z-index: 2;
+  max-width: 45rem;
+}
+
+.eyebrow,
+.section-label p,
+.panel-kicker {
+  color: var(--gold-soft);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.hero h1,
+.admin-header h1 {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(4rem, 10vw, 9.4rem);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  line-height: 0.82;
+  margin: 1rem 0 1.4rem;
+  max-width: 11ch;
+}
+
+.hero__lead {
+  max-width: 42rem;
+  color: rgba(245, 243, 239, 0.78);
+  font-size: clamp(1rem, 1.4vw, 1.28rem);
+  line-height: 1.85;
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 2.2rem;
+}
+
+.button,
+.upload-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  border: 1px solid transparent;
+  padding: 0.9rem 1.2rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.button:hover,
+.upload-button:hover {
+  transform: translateY(-2px);
+}
+
+.button--gold,
+.upload-button {
+  color: var(--obsidian);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.button--ghost {
+  color: var(--ivory);
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.hero__visual {
+  position: relative;
+}
+
+.hero__visual .image-slot {
+  min-height: 31rem;
+  box-shadow: var(--shadow);
+}
+
+.hero__seal {
+  position: absolute;
+  right: clamp(1rem, 4vw, 3rem);
+  bottom: clamp(1rem, 4vw, 3rem);
+  display: grid;
+  place-items: center;
+  width: 8.5rem;
+  height: 8.5rem;
+  border: 1px solid rgba(201, 161, 90, 0.72);
+  border-radius: 50%;
+  background: rgba(8, 11, 11, 0.64);
+  backdrop-filter: blur(14px);
+}
+
+.hero__seal span {
+  position: absolute;
+  color: var(--ivory);
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.8rem;
+  letter-spacing: 0.12em;
+}
+
+.section-label {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1.4rem;
+  width: 100%;
+}
+
+.section-label--left {
+  grid-template-columns: minmax(2rem, 5rem) auto 1fr;
+}
+
+.section-label span {
+  height: 1px;
+  background: var(--line);
+}
+
+.brand-board,
+.system-grid,
+.image-section,
+.values-section {
+  position: relative;
+  z-index: 1;
+  padding: clamp(2rem, 5vw, 4rem) clamp(1.2rem, 5vw, 5rem);
+}
+
+.logo-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1.2rem;
+}
+
+.logo-panel {
+  display: grid;
+  place-items: center;
+  min-height: 12rem;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.025);
+  text-align: center;
+}
+
+.logo-panel > p {
+  align-self: start;
+  justify-self: start;
+  margin: 1rem;
+  color: var(--stone);
+  font-size: 0.64rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.logo-panel--light {
+  color: var(--obsidian);
+  background: var(--ivory);
+}
+
+.logo-panel--light .wordmark em {
+  color: var(--lichen);
+}
+
+.monogram {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 7.2rem;
+  height: 7.2rem;
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+  color: var(--ivory);
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 2.4rem;
+  letter-spacing: 0.12em;
+}
+
+.monogram span {
+  width: 1px;
+  height: 3.8rem;
+  margin: 0 0.6rem;
+  background: var(--gold);
+}
+
+.system-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 1.5rem;
+}
+
+.palette-card,
+.type-card,
+.brand-mark-panel,
+.values-panel,
+.tagline-panel,
+.editor-card {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.palette-card,
+.type-card {
+  padding: 1.4rem;
+}
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1rem;
+  margin-top: 1.6rem;
+}
+
+.swatch span {
+  display: block;
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+}
+
+.swatch small,
+.swatch em {
+  display: block;
+  margin-top: 0.55rem;
+  color: var(--ivory);
+  font-size: 0.64rem;
+  font-style: normal;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.swatch em {
+  color: var(--stone);
+  letter-spacing: 0.08em;
+}
+
+.type-card h2 {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(3rem, 6vw, 5rem);
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  margin: 1.5rem 0 0.3rem;
+  text-transform: uppercase;
+}
+
+.type-card .subhead {
+  color: var(--gold);
+  font-size: 1.3rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+}
+
+.type-card p:not(.subhead) {
+  color: var(--parchment);
+  line-height: 1.7;
+}
+
+.imagery-grid,
+.applications-grid {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.3rem;
+}
+
+.imagery-grid {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.applications-grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.image-slot {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--ivory);
+}
+
+.image-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 240ms ease, object-position 240ms ease;
+}
+
+.image-slot figcaption {
+  position: absolute;
+  left: 0.7rem;
+  right: 0.7rem;
+  bottom: 0.7rem;
+  padding: 0.55rem 0.65rem;
+  color: var(--ivory);
+  background: rgba(8, 11, 11, 0.64);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.placeholder-card {
+  display: grid;
+  place-content: center;
+  gap: 0.7rem;
+  width: 100%;
+  height: 100%;
+  padding: 1rem;
+  color: var(--obsidian);
+  text-align: center;
+  background:
+    linear-gradient(135deg, transparent 48%, rgba(8, 11, 11, 0.06) 49%, rgba(8, 11, 11, 0.06) 51%, transparent 52%),
+    var(--ivory);
+}
+
+.placeholder-card span {
+  color: var(--obsidian);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.placeholder-card small {
+  color: rgba(8, 11, 11, 0.6);
+  line-height: 1.5;
+}
+
+.values-section {
+  display: grid;
+  grid-template-columns: 0.9fr 1.4fr 0.9fr;
+  gap: 1rem;
+  padding-bottom: 5rem;
+}
+
+.brand-mark-panel,
+.values-panel,
+.tagline-panel {
+  padding: 1.5rem;
+}
+
+.brand-mark-panel {
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.brand-mark-panel p,
+.tagline-panel p {
+  color: var(--gold-soft);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.brand-mark-panel strong {
+  margin-top: 1rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.values-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.8rem;
+  margin-top: 1.2rem;
+}
+
+.values-grid article {
+  min-height: 10rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+}
+
+.value-icon {
+  display: block;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+}
+
+.values-grid h3 {
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.values-grid p,
+.tagline-panel span {
+  color: var(--stone);
+  font-size: 0.86rem;
+  line-height: 1.65;
+}
+
+.tagline-panel h2 {
+  color: var(--gold);
+  font-size: clamp(1.5rem, 3vw, 3rem);
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  line-height: 1.45;
+  text-transform: uppercase;
+}
+
+.tagline-panel a {
+  display: inline-block;
+  margin-top: 1.2rem;
+  color: var(--ivory);
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.admin-shell {
+  display: grid;
+  grid-template-columns: 19rem minmax(0, 1fr);
+  min-height: 100vh;
+  color: var(--obsidian);
+  background: var(--ivory);
+}
+
+.admin-sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 1.3rem;
+  min-height: 100vh;
+  padding: 1.5rem;
+  color: var(--ivory);
+  background: var(--obsidian);
+}
+
+.admin-sidebar p,
+.admin-sidebar small {
+  color: var(--stone);
+  line-height: 1.65;
+}
+
+.admin-sidebar nav {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.admin-sidebar nav button,
+.text-button {
+  border: 1px solid var(--line);
+  padding: 0.85rem 1rem;
+  color: var(--ivory);
+  background: transparent;
+  text-align: left;
+  text-transform: capitalize;
+}
+
+.admin-sidebar nav button.is-active {
+  color: var(--obsidian);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.deploy-meter {
+  height: 0.45rem;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.deploy-meter span {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+  transition: width 240ms ease;
+}
+
+.admin-main {
+  padding: clamp(1.2rem, 4vw, 3rem);
+}
+
+.admin-header h1 {
+  max-width: 13ch;
+  color: var(--obsidian);
+  font-size: clamp(3rem, 7vw, 6.6rem);
+}
+
+.admin-layout {
+  display: grid;
+  grid-template-columns: minmax(14rem, 0.42fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.slot-list {
+  display: grid;
+  gap: 0.5rem;
+  align-self: start;
+}
+
+.slot-row {
+  display: grid;
+  gap: 0.3rem;
+  border: 1px solid var(--line-dark);
+  padding: 1rem;
+  color: var(--obsidian);
+  background: #fff;
+  text-align: left;
+}
+
+.slot-row.is-active {
+  color: var(--ivory);
+  background: var(--obsidian);
+}
+
+.slot-row span {
+  font-weight: 800;
+}
+
+.slot-row small {
+  color: inherit;
+  opacity: 0.68;
+}
+
+.editor-card {
+  padding: clamp(1rem, 2vw, 1.5rem);
+  color: var(--obsidian);
+  background: #fff;
+  border-color: var(--line-dark);
+}
+
+.editor-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.editor-card h2 {
+  margin: 0.3rem 0;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(2rem, 4vw, 4rem);
+  font-weight: 400;
+}
+
+.editor-card__top span {
+  color: var(--lichen);
+  font-size: 0.76rem;
+  letter-spacing: 0.12em;
+}
+
+.upload-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.upload-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+.admin-preview {
+  width: 100%;
+  max-height: 34rem;
+}
+
+.control-grid,
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.form-grid--single {
+  grid-template-columns: 1fr;
+}
+
+label {
+  display: grid;
+  gap: 0.45rem;
+  color: var(--obsidian);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+input,
+textarea {
+  width: 100%;
+  border: 1px solid var(--line-dark);
+  padding: 0.85rem;
+  color: var(--obsidian);
+  background: var(--ivory);
+  outline: none;
+}
+
+input:focus,
+textarea:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(201, 161, 90, 0.18);
+}
+
+input[type="range"] {
+  padding: 0;
+  accent-color: var(--gold);
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toggle-row input {
+  width: auto;
+}
+
+.checklist {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.checklist article {
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid var(--line-dark);
+  padding: 1rem;
+  background: var(--ivory);
+}
+
+.checklist strong {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+}
+
+.checklist span {
+  color: var(--lichen);
+}
+
+.checklist em {
+  color: var(--gold);
+  font-style: normal;
+  font-weight: 800;
+}
+
+@media (max-width: 1020px) {
+  .hero,
+  .system-grid,
+  .values-section,
+  .admin-shell,
+  .admin-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-sidebar {
+    position: relative;
+    min-height: auto;
+  }
+
+  .logo-grid,
+  .imagery-grid,
+  .applications-grid,
+  .values-grid,
+  .swatches,
+  .checklist {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .hero__actions,
+  .hero__actions .button {
+    width: 100%;
+  }
+
+  .hero__actions .button {
+    white-space: normal;
+    text-align: center;
+  }
+}
+
+@media (max-width: 700px) {
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .topbar nav {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  .topbar nav a,
+  .topbar nav button:not(.topbar__brand) {
+    letter-spacing: 0.16em;
+  }
+
+  .hero {
+    min-height: auto;
+    padding-top: 3rem;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.85rem, 12vw, 4.1rem);
+    letter-spacing: 0.015em;
+  }
+
+  .hero__visual .image-slot {
+    min-height: 22rem;
+  }
+
+  .hero__actions,
+  .hero__actions .button {
+    width: 100%;
+  }
+
+  .hero__actions .button {
+    padding-inline: 0.8rem;
+    font-size: 0.64rem;
+    letter-spacing: 0.14em;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .hero__seal {
+    width: 6.5rem;
+    height: 6.5rem;
+  }
+
+  .logo-grid,
+  .imagery-grid,
+  .applications-grid,
+  .values-grid,
+  .swatches,
+  .control-grid,
+  .form-grid,
+  .checklist {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-card__top {
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero__copy,
+  .hero__visual,
+  .brand-board,
+  .system-grid,
+  .image-section,
+  .values-section {
+    animation: rise-in 720ms ease both;
+  }
+
+  .hero__visual {
+    animation-delay: 120ms;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

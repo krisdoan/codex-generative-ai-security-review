@@ -1,0 +1,14 @@
+{
+  "hosting": {
+    "public": "public",
+    "rewrites": [
+      {
+        "source": "**",
+        "run": {
+          "serviceId": "Yhttps://eyeglasses-tryon-61111083561.asia-northeast1.run.app/",
+          "region": "asia-northeast1"
+        }
+      }
+    ]
+  }
+}
