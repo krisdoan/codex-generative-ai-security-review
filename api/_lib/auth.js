@@ -53,16 +53,11 @@ const getAuthSecret = () => {
   const explicit = process.env.OD_AUTH_SECRET;
   if (explicit && String(explicit).trim()) return String(explicit).trim();
 
-  // Stable fallback based on existing secrets (never returned to clients).
-  const sa = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  if (sa && String(sa).trim()) {
-    return crypto.createHash("sha256").update(String(sa)).digest("hex");
+  if (process.env.VERCEL === "1" || process.env.NODE_ENV === "production") {
+    throw new Error("Missing OD_AUTH_SECRET env var.");
   }
-  const blob = process.env.BLOB_READ_WRITE_TOKEN;
-  if (blob && String(blob).trim()) {
-    return crypto.createHash("sha256").update(String(blob)).digest("hex");
-  }
-  // Last resort (dev only)
+
+  // Last resort for local development only.
   return "dev-insecure-auth-secret";
 };
 

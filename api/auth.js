@@ -6,6 +6,7 @@ import {
   requireAuth,
   setAuthCookie,
 } from "./_lib/auth.js";
+import { enforceRateLimit, getClientIp } from "./_lib/rate-limit.js";
 import {
   createUser,
   ensureDefaultAdmins,
@@ -19,6 +20,14 @@ import {
 } from "./_lib/users-store.js";
 
 const normalizeEmail = (s) => String(s || "").trim().toLowerCase();
+const validatePassword = (password) => {
+  const value = String(password || "");
+  if (value.length < 12) return "Password must be at least 12 characters.";
+  if (!/[A-Za-z]/.test(value) || !/[0-9]/.test(value)) return "Password must include letters and numbers.";
+  const weak = new Set(["password1234", "123456789012"]);
+  if (weak.has(value.toLowerCase())) return "Password is too easy to guess.";
+  return null;
+};
 
 export default async function handler(req, res) {
   try {
@@ -26,7 +35,9 @@ export default async function handler(req, res) {
     if (req.method === "GET") {
       const auth = getAuthFromRequest(req);
       if (!auth) return sendJson(res, 200, { user: null });
-      return sendJson(res, 200, { user: { email: auth.email, name: auth.name, role: auth.role } });
+      const user = await getUserByEmail(auth.email);
+      if (!user) return sendJson(res, 200, { user: null });
+      return sendJson(res, 200, { user: { email: user.email, name: user.name, role: user.role } });
     }
 
     if (req.method !== "POST") return sendJson(res, 405, { error: "Method not allowed" });
@@ -35,8 +46,10 @@ export default async function handler(req, res) {
     const action = String(body?.action || "");
 
     if (action === "login") {
-      await ensureDefaultAdmins();
       const email = normalizeEmail(body?.email);
+      const limitKey = `login:${email || "empty"}:${getClientIp(req)}`;
+      if (!enforceRateLimit(req, res, { key: limitKey, limit: 8, windowMs: 15 * 60 * 1000 })) return;
+      await ensureDefaultAdmins();
       const password = String(body?.password || "");
       if (!email || !password) return sendJson(res, 400, { error: "Missing email/password." });
 
@@ -62,8 +75,11 @@ export default async function handler(req, res) {
       return sendJson(res, 200, { ok: true });
     }
 
-    const auth = requireAuth(req, res);
-    if (!auth) return;
+    const tokenAuth = requireAuth(req, res);
+    if (!tokenAuth) return;
+    const activeUser = await getUserByEmail(tokenAuth.email);
+    if (!activeUser) return sendJson(res, 401, { error: "Unauthorized" });
+    const auth = { ...tokenAuth, email: activeUser.email, name: activeUser.name, role: activeUser.role };
 
     if (action === "users.list") {
       if (auth.role !== "admin") return sendJson(res, 403, { error: "Forbidden" });
@@ -80,6 +96,8 @@ export default async function handler(req, res) {
       const password = String(body?.password || "");
       const requestedRole = String(body?.role || "user");
       if (!email || !name || !password) return sendJson(res, 400, { error: "Missing email/name/password." });
+      const passwordError = validatePassword(password);
+      if (passwordError) return sendJson(res, 400, { error: passwordError });
       const role = isSuperAdmin(auth.email) && requestedRole === "admin" ? "admin" : "user";
       const user = await createUser({ email, name, password, role });
       return sendJson(res, 200, { user });
@@ -122,6 +140,8 @@ export default async function handler(req, res) {
         if (!currentPassword) return sendJson(res, 400, { error: "Missing currentPassword." });
         const ok = await verifyPassword(currentPassword, user.password);
         if (!ok) return sendJson(res, 401, { error: "Current password is incorrect." });
+        const passwordError = validatePassword(newPassword);
+        if (passwordError) return sendJson(res, 400, { error: passwordError });
       }
 
       const patch = {};
@@ -144,7 +164,7 @@ export default async function handler(req, res) {
 
     return sendJson(res, 400, { error: "Unknown action." });
   } catch (e) {
-    return sendJson(res, 500, { error: e?.message || "Auth error." });
+    console.error("Auth API error", e);
+    return sendJson(res, 500, { error: "Auth error." });
   }
 }
-

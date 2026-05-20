@@ -5,6 +5,7 @@ import { Firestore, FieldValue } from "@google-cloud/firestore";
 import { GoogleGenAI } from "@google/genai";
 import authHandler from "../api/auth.js";
 import { requireAuth } from "../api/_lib/auth.js";
+import { fetchUrlAsInlineData as safeFetchUrlAsInlineData } from "../api/_lib/gemini.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,14 +21,16 @@ if (!process.env.VERCEL && !process.env.K_SERVICE && !process.env.FIRESTORE_EMUL
 const app = express();
 app.use(express.json({ limit: "2mb" }));
 
-// Basic CORS for Vercel-hosted frontend + localhost.
+// Basic CORS for the known frontend origins only.
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  const allowed =
-    origin &&
-    (origin.includes("vercel.app") ||
-      origin.includes("localhost") ||
-      origin.includes("127.0.0.1"));
+  const allowedOrigins = new Set([
+    "https://codex-generative-ai.vercel.app",
+    `http://${HOST}:${PORT}`,
+    `http://127.0.0.1:${PORT}`,
+    `http://localhost:${PORT}`,
+  ]);
+  const allowed = origin && allowedOrigins.has(String(origin));
   if (allowed) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
@@ -75,6 +78,24 @@ const toDateKey = (isoString) => {
   const d = new Date(isoString);
   // en-CA gives YYYY-MM-DD
   return d.toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
+};
+
+const isAllowedBlobUrl = (rawUrl) => {
+  try {
+    const u = new URL(String(rawUrl || ""));
+    return (
+      u.protocol === "https:" &&
+      (u.hostname.toLowerCase().endsWith(".public.blob.vercel-storage.com") ||
+        u.hostname.toLowerCase() === "public.blob.vercel-storage.com")
+    );
+  } catch {
+    return false;
+  }
+};
+
+const isSafeBlobPathname = (pathname) => {
+  const p = String(pathname || "");
+  return p.length > 0 && p.length < 512 && !p.includes("://") && !p.includes("..");
 };
 
 app.get("/api/health", (_req, res) => {
@@ -244,6 +265,11 @@ app.all("/api/assets", async (req, res) => {
     if (!kind || !mimeType || !url || !pathname) {
       return res.status(400).json({ error: "Missing kind/mimeType/url/pathname." });
     }
+    const allowedMimeTypes = ["image/png", "image/jpeg", "image/webp", "video/mp4"];
+    if (!allowedMimeTypes.includes(String(mimeType))) return res.status(400).json({ error: "Unsupported mimeType." });
+    if (!isAllowedBlobUrl(url) || !isSafeBlobPathname(pathname)) {
+      return res.status(400).json({ error: "Invalid asset URL." });
+    }
 
     const now = new Date().toISOString();
     const expiresAt = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString();
@@ -317,7 +343,7 @@ const readJob = async (id) => {
   return memory.jobs.get(id) || null;
 };
 
-const createJob = async (payload) => {
+const createJob = async (payload, auth) => {
   const id = `job-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const now = new Date().toISOString();
   const base = {
@@ -326,6 +352,8 @@ const createJob = async (payload) => {
     createdAt: now,
     updatedAt: now,
     payload,
+    ownerEmail: String(auth?.email || ""),
+    ownerName: String(auth?.name || ""),
     result: null,
     error: null,
   };
@@ -337,13 +365,7 @@ const createJob = async (payload) => {
   return id;
 };
 
-const fetchUrlAsInlineData = async (url) => {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`Failed to fetch reference: ${r.status}`);
-  const mimeType = r.headers.get("content-type") || "application/octet-stream";
-  const buf = Buffer.from(await r.arrayBuffer());
-  return { inlineData: { data: buf.toString("base64"), mimeType } };
-};
+const fetchUrlAsInlineData = safeFetchUrlAsInlineData;
 
 const isHttp400 = (err) => {
   const status = err?.status || err?.code || err?.response?.status;
@@ -561,11 +583,13 @@ const runJob = async (id) => {
 };
 
 app.post("/api/jobs/start", async (req, res) => {
+  const auth = requireAuth(req, res);
+  if (!auth) return;
   try {
     const payload = req.body?.payload;
     if (!payload || typeof payload !== "object") return res.status(400).json({ error: "Missing payload." });
     if (!payload.glassesUrl) return res.status(400).json({ error: "Missing payload.glassesUrl." });
-    const id = await createJob(payload);
+    const id = await createJob(payload, auth);
     enqueueJob(id);
     return res.json({ job_id: id });
   } catch (e) {
@@ -574,10 +598,15 @@ app.post("/api/jobs/start", async (req, res) => {
 });
 
 app.get("/api/status/:job_id", async (req, res) => {
+  const auth = requireAuth(req, res);
+  if (!auth) return;
   try {
     const id = req.params.job_id;
     const job = await readJob(id);
     if (!job) return res.status(404).json({ error: "Job not found." });
+    if (String(job.ownerEmail || "").toLowerCase() !== String(auth.email || "").toLowerCase() && auth.role !== "admin") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
     return res.json({
       job_id: id,
       status: job.status,
@@ -591,20 +620,7 @@ app.get("/api/status/:job_id", async (req, res) => {
 });
 
 app.get("/status/:job_id", async (req, res) => {
-  try {
-    const id = req.params.job_id;
-    const job = await readJob(id);
-    if (!job) return res.status(404).json({ error: "Job not found." });
-    return res.json({
-      job_id: id,
-      status: job.status,
-      progress: Number(job.progress || 0),
-      result: job.result || null,
-      error: job.error || null,
-    });
-  } catch (e) {
-    return res.status(500).json({ error: e?.message || "Status error." });
-  }
+  return res.status(410).json({ error: "Use authenticated /api/status/:job_id." });
 });
 
 app.all("/api/sessions", async (req, res) => {
@@ -781,146 +797,19 @@ app.all("/api/sessions", async (req, res) => {
 });
 
 app.post("/api/sessions/start", async (req, res) => {
-  const { userEmail, userName, role } = req.body || {};
-  if (!userEmail || !userName || !role) {
-    return res.status(400).json({ error: "Missing userEmail/userName/role." });
-  }
-  const now = new Date().toISOString();
-  const base = {
-    userEmail,
-    userName,
-    role,
-    loginAt: now,
-    logoutAt: null,
-    generatedCount: 0,
-    totalCost: 0,
-    events: [{ at: now, type: "login" }],
-    dateKey: toDateKey(now),
-    updatedAt: now,
-  };
-
-  try {
-    if (firestore) {
-      const doc = await sessionCollection().add({
-        ...base,
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-      return res.json({ id: doc.id });
-    }
-    const id = `mem-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    memory.sessions.set(id, { id, ...base });
-    return res.json({ id });
-  } catch (e) {
-    return res.status(500).json({ error: e?.message || "Failed to start session." });
-  }
+  return res.status(410).json({ error: "Use authenticated /api/sessions action=start." });
 });
 
 app.post("/api/sessions/:id/event", async (req, res) => {
-  const id = req.params.id;
-  const { type, details, generatedCountDelta = 0, costDelta = 0 } = req.body || {};
-  if (!type) return res.status(400).json({ error: "Missing type." });
-  const now = new Date().toISOString();
-  const event = { at: now, type, details: details || null };
-
-  try {
-    if (firestore) {
-      const ref = sessionCollection().doc(id);
-      await ref.set(
-        {
-          generatedCount: FieldValue.increment(Number(generatedCountDelta) || 0),
-          totalCost: FieldValue.increment(Number(costDelta) || 0),
-          events: FieldValue.arrayUnion(event),
-          updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
-      return res.json({ ok: true });
-    }
-    const current = memory.sessions.get(id);
-    if (!current) return res.status(404).json({ error: "Session not found." });
-    current.generatedCount += Number(generatedCountDelta) || 0;
-    current.totalCost += Number(costDelta) || 0;
-    current.events.push(event);
-    current.updatedAt = now;
-    memory.sessions.set(id, current);
-    return res.json({ ok: true });
-  } catch (e) {
-    return res.status(500).json({ error: e?.message || "Failed to write event." });
-  }
+  return res.status(410).json({ error: "Use authenticated /api/sessions action=event." });
 });
 
 app.post("/api/sessions/:id/end", async (req, res) => {
-  const id = req.params.id;
-  const now = new Date().toISOString();
-  const event = { at: now, type: "logout", details: null };
-
-  try {
-    if (firestore) {
-      const ref = sessionCollection().doc(id);
-      await ref.set(
-        {
-          logoutAt: now,
-          events: FieldValue.arrayUnion(event),
-          updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
-      return res.json({ ok: true });
-    }
-    const current = memory.sessions.get(id);
-    if (!current) return res.status(404).json({ error: "Session not found." });
-    current.logoutAt = now;
-    current.events.push(event);
-    current.updatedAt = now;
-    memory.sessions.set(id, current);
-    return res.json({ ok: true });
-  } catch (e) {
-    return res.status(500).json({ error: e?.message || "Failed to end session." });
-  }
+  return res.status(410).json({ error: "Use authenticated /api/sessions action=end." });
 });
 
 app.get("/api/sessions", async (req, res) => {
-  const date = (req.query.date || "").toString(); // YYYY-MM-DD
-  const userQuery = (req.query.userQuery || "").toString().toLowerCase();
-  const limit = Math.min(Number(req.query.limit || 200), 1000);
-
-  try {
-    let items = [];
-    if (firestore) {
-      let q = sessionCollection().orderBy("loginAt", "desc").limit(limit);
-      if (date) q = q.where("dateKey", "==", date);
-      const snap = await q.get();
-      items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    } else {
-      items = Array.from(memory.sessions.values()).sort((a, b) => (a.loginAt < b.loginAt ? 1 : -1));
-      if (date) items = items.filter((x) => x.dateKey === date);
-      items = items.slice(0, limit);
-    }
-
-    if (userQuery) {
-      items = items.filter((x) => {
-        const email = (x.userEmail || "").toLowerCase();
-        const name = (x.userName || "").toLowerCase();
-        return email.includes(userQuery) || name.includes(userQuery);
-      });
-    }
-
-    // Normalize output to match frontend expectations.
-    const normalized = items.map((x) => ({
-      id: x.id,
-      userEmail: x.userEmail,
-      userName: x.userName,
-      role: x.role,
-      loginAt: x.loginAt,
-      logoutAt: x.logoutAt || undefined,
-      generatedCount: Number(x.generatedCount || 0),
-      totalCost: Number(x.totalCost || 0),
-      events: Array.isArray(x.events) ? x.events : [],
-    }));
-    return res.json({ sessions: normalized });
-  } catch (e) {
-    return res.status(500).json({ error: e?.message || "Failed to list sessions." });
-  }
+  return res.status(410).json({ error: "Use authenticated /api/sessions." });
 });
 
 // Static app (after build)

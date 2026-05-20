@@ -1,12 +1,13 @@
 import { getFirestore, getFieldValue } from "../_lib/firestore.js";
 import { readJsonBody, sendJson } from "../_lib/http.js";
-import { requireAuth } from "../_lib/auth.js";
+import { requireActiveAuth } from "../_lib/active-auth.js";
+import { hasServerGeminiApiKey } from "../_lib/server-key.js";
 
 const collectionName = "od_app_config_v1";
 const docId = "defaults";
 
 export default async function handler(req, res) {
-  const auth = requireAuth(req, res);
+  const auth = await requireActiveAuth(req, res);
   if (!auth) return;
   try {
     const db = getFirestore();
@@ -24,10 +25,10 @@ export default async function handler(req, res) {
         modelDatabase: Array.isArray(data.modelDatabase) ? data.modelDatabase : [],
         budgetLimits: data.budgetLimits || null,
         budgetStatusKey: data.budgetStatusKey || null,
-        hasGeminiApiKey: Boolean(data.geminiApiKey),
-        geminiApiKeyScope: data.geminiApiKeyScope || null,
-        geminiApiKeyOwnerEmail: data.geminiApiKeyOwnerEmail || null,
-        geminiApiKeySavedAt: data.geminiApiKeySavedAt || null,
+        hasGeminiApiKey: hasServerGeminiApiKey(),
+        geminiApiKeyScope: hasServerGeminiApiKey() ? "environment" : null,
+        geminiApiKeyOwnerEmail: null,
+        geminiApiKeySavedAt: null,
       });
     }
 
@@ -44,9 +45,6 @@ export default async function handler(req, res) {
       const budgetStatusKey = body?.budgetStatusKey;
       const geminiApiKey = body?.geminiApiKey;
       const removeGeminiApiKey = Boolean(body?.removeGeminiApiKey);
-      const geminiApiKeyScope = body?.geminiApiKeyScope;
-      const geminiApiKeyOwnerEmail = body?.geminiApiKeyOwnerEmail;
-      const geminiApiKeySavedAt = body?.geminiApiKeySavedAt;
 
       if (
         (!defaults || typeof defaults !== "object") &&
@@ -61,6 +59,12 @@ export default async function handler(req, res) {
         !removeGeminiApiKey
       ) {
         return sendJson(res, 400, { error: "Missing defaults or specOptions object." });
+      }
+
+      if (geminiApiKey || removeGeminiApiKey) {
+        return sendJson(res, 400, {
+          error: "Gemini API key is managed by deployment environment variables only.",
+        });
       }
 
       const patch = { updatedAt: FieldValue.serverTimestamp() };
@@ -85,20 +89,6 @@ export default async function handler(req, res) {
       if (resetCustomSpecFields) patch.customSpecFields = null;
       if (budgetLimits && typeof budgetLimits === "object") patch.budgetLimits = budgetLimits;
       if (budgetStatusKey && typeof budgetStatusKey === "string") patch.budgetStatusKey = budgetStatusKey;
-      if (geminiApiKey && typeof geminiApiKey === "string") {
-        patch.geminiApiKey = geminiApiKey;
-        patch.geminiApiKeyScope = typeof geminiApiKeyScope === "string" ? geminiApiKeyScope : "permanent";
-        // Only store ownerEmail as the authenticated admin (never trust client-provided owner).
-        patch.geminiApiKeyOwnerEmail = String(auth.email || "");
-        patch.geminiApiKeySavedAt = typeof geminiApiKeySavedAt === "string" ? geminiApiKeySavedAt : new Date().toISOString();
-      }
-      if (removeGeminiApiKey) {
-        patch.geminiApiKey = null;
-        patch.geminiApiKeyScope = null;
-        patch.geminiApiKeyOwnerEmail = null;
-        patch.geminiApiKeySavedAt = null;
-      }
-
       await db.collection(collectionName).doc(docId).set(
         patch,
         { merge: true }
@@ -108,6 +98,7 @@ export default async function handler(req, res) {
 
     return sendJson(res, 405, { error: "Method not allowed" });
   } catch (e) {
-    return sendJson(res, 500, { error: e?.message || "Config error." });
+    console.error("Config API error", e);
+    return sendJson(res, 500, { error: "Config error." });
   }
 }

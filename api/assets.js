@@ -2,14 +2,31 @@ import crypto from "node:crypto";
 import { handleUpload } from "@vercel/blob/client";
 import { getFirestore, getFieldValue, toTokyoDateKey } from "./_lib/firestore.js";
 import { readJsonBody, sendJson } from "./_lib/http.js";
-import { requireAuth } from "./_lib/auth.js";
+import { requireActiveAuth } from "./_lib/active-auth.js";
+import { enforceRateLimit } from "./_lib/rate-limit.js";
 
 const collectionName = "od_archived_assets_v1";
 
 const daysAgoIso = (days) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+const isAllowedBlobUrl = (rawUrl) => {
+  try {
+    const u = new URL(String(rawUrl || ""));
+    return (
+      u.protocol === "https:" &&
+      (u.hostname.toLowerCase().endsWith(".public.blob.vercel-storage.com") ||
+        u.hostname.toLowerCase() === "public.blob.vercel-storage.com")
+    );
+  } catch {
+    return false;
+  }
+};
+const isSafeBlobPathname = (pathname) => {
+  const p = String(pathname || "");
+  return p.length > 0 && p.length < 512 && !p.includes("://") && !p.includes("..");
+};
 
 export default async function handler(req, res) {
-  const auth = requireAuth(req, res);
+  const auth = await requireActiveAuth(req, res);
   if (!auth) return;
 
   try {
@@ -51,6 +68,7 @@ export default async function handler(req, res) {
     }
 
     if (req.method !== "POST") return sendJson(res, 405, { error: "Method not allowed" });
+    if (!enforceRateLimit(req, res, { key: `assets:${auth.email}`, limit: 240, windowMs: 60 * 60 * 1000 })) return;
 
     const body = await readJsonBody(req);
     const action = String(body?.action || "");
@@ -59,6 +77,11 @@ export default async function handler(req, res) {
       const { kind, mimeType, url, pathname, referenceFileName, fileName } = body || {};
       if (!kind || !mimeType || !url || !pathname) {
         return sendJson(res, 400, { error: "Missing kind/mimeType/url/pathname." });
+      }
+      const allowed = ["image/png", "image/jpeg", "image/webp", "video/mp4"];
+      if (!allowed.includes(String(mimeType))) return sendJson(res, 400, { error: "Unsupported mimeType." });
+      if (!isAllowedBlobUrl(url) || !isSafeBlobPathname(pathname)) {
+        return sendJson(res, 400, { error: "Invalid asset URL." });
       }
       const now = new Date().toISOString();
       const expiresAt = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString();
@@ -118,7 +141,7 @@ export default async function handler(req, res) {
 
     return sendJson(res, 200, jsonResponse);
   } catch (e) {
-    return sendJson(res, 400, { error: e?.message || "Assets error." });
+    console.error("Assets API error", e);
+    return sendJson(res, 400, { error: "Assets error." });
   }
 }
-

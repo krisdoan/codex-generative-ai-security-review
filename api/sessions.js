@@ -1,9 +1,9 @@
 import { getFirestore, getFieldValue, collectionName, toTokyoDateKey } from "./_lib/firestore.js";
 import { readJsonBody, sendJson } from "./_lib/http.js";
-import { requireAuth } from "./_lib/auth.js";
+import { requireActiveAuth } from "./_lib/active-auth.js";
 
 export default async function handler(req, res) {
-  const auth = requireAuth(req, res);
+  const auth = await requireActiveAuth(req, res);
   if (!auth) return;
 
   const db = getFirestore();
@@ -122,7 +122,7 @@ export default async function handler(req, res) {
 
     return sendJson(res, 400, { error: "Unknown action." });
   } catch (e) {
-    return sendJson(res, 500, { error: e?.message || "Sessions error." });
+    console.error("Sessions API error", e);
+    return sendJson(res, 500, { error: "Sessions error." });
   }
 }
-

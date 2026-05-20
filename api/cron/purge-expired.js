@@ -10,6 +10,9 @@ export default async function handler(req, res) {
 
   const required = process.env.CRON_SECRET;
   const provided = String(req.headers["x-cron-secret"] || req.query?.secret || "");
+  if ((process.env.VERCEL === "1" || process.env.NODE_ENV === "production") && !required) {
+    return sendJson(res, 503, { error: "Cron secret is not configured." });
+  }
   if (required && provided !== required) return sendJson(res, 401, { error: "Unauthorized" });
 
   try {

@@ -82,6 +82,10 @@ export const verifyPassword = async (password, record) => {
 };
 
 export const ensureDefaultAdmins = async () => {
+  if ((process.env.VERCEL === "1" || process.env.NODE_ENV === "production") && process.env.ALLOW_DEFAULT_ADMIN_SEED !== "1") {
+    return;
+  }
+
   const seedMemoryAdmins = async () => {
     await Promise.all(
       DEFAULT_ADMINS.map(async (a) => {
